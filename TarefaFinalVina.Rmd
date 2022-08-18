@@ -1,0 +1,415 @@
+---
+title: "TarefaFinal_vina"
+author: "Balboni"
+date: "16/06/2021"
+output: pdf_document
+---
+
+
+```{r}
+#install.packages("kernlab")
+#install.packages("Metrics")
+#install.packages("esquisse")
+#install.packages("monomvn")
+#install.packages("leaps")
+library(neuralnet)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(foreign)
+library(mlbench)
+library(randomForest)
+library(kernlab)
+library(Metrics)
+library(esquisse)
+library(elasticnet)
+library(monomvn)
+library(leaps)
+library(parallel)
+library(iterators)
+library(foreach)
+```
+
+# Carregando dataset
+
+# Entrada sem a normalização dos dados 
+```{r}
+entrada2 = read.csv('C://Users//Balboni//Desktop//Mestrado//Aulas//Mineração de dados//R//TarefaFinal//RPDB.csv', sep=",")
+```
+
+# Entrada com os dados normalizados
+```{r}
+entrada = read.csv('C://Users//Balboni//Desktop//Mestrado//Aulas//Mineração de dados//R//TarefaFinal//RPDB_pos_python.csv', sep=",")
+```
+
+# Carregando a paralelização
+```{r}
+library(doParallel)
+
+cl <- makePSOCKcluster(4)
+registerDoParallel(cl)
+```
+
+# Separação dos dados
+```{r}
+set.seed(1000)
+proporcao=0.8
+random = createDataPartition(entrada$vina,p=proporcao,list=FALSE) 
+treinoData =  entrada[random,] 
+testeData =  entrada[-random,]
+```
+
+```{r}
+entrada[entrada == ""] <- 0
+```
+# Todas as operações aqui são utilizando o PCA como medida de seleção de atributos.
+
+# Rodando a primeira vez com as 30 variaveis 
+```{r}
+modelo1 = train(vina ~ BalabanJ + D4 + NN115 + NN119 + NN124 + NN138 + NN161 + NN162 + NN172 + PBF + PMI1 + D34 + NN132 + S8 + F18 + F21 + F22 + F23 + F25 + F26 + F27 + F28 + F29 + F30 + F31 + F32 + F33 + R + D5 + NN192, data = entrada2, method = "svmLinear")
+
+```
+
+# Resultados
+```{r}
+teste1 = predict(modelo1, testeData)
+rmse1 = rmse(testeData$vina,teste1)
+rrse1 = rrse(testeData$vina,teste1)
+rmse1
+rrse1
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,teste1, col=ifelse(abs(testeData$vina-teste1) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+# Rodando a segunda vez com as 77 variaveis que os 5 pca me retornaram 
+# Rodando com o método "svmLinear"
+
+```{r}
+modelo2 = train(vina ~ F58+NN3+NN4+NN29+NN51+NN62+NN219+NN233+NN234+NN285+NN313+Chi4v+NumBridgeheadAtoms+PEOE_VSA6+SMR_VSA6+SlogP_VSA5+S1+S5+S10+F2+F3+F43+F44+F45+F46+F47+F49+F50+F51+
+F55+F56+NN28+NN50+NN61+NN161+NN232+NN284+nBondsM+n4Ring+nF8Ring+nT4Ring+nT8Ring+nTG12Ring+
+n4HeteroRing+nF8HeteroRing+nT4HeteroRing+nT8HeteroRing+nTG12HeteroRing+SlogP_VSA7+EState_VSA1+
+nG12Ring+nF10Ring+nF11Ring+nF12Ring+nFG12Ring+nT10Ring+nT11Ring+nT12Ring+nF10HeteroRing+nF11HeteroRing+nF12HeteroRing+nT10HeteroRing+nT11HeteroRing+nT12HeteroRing+NumSaturatedRings+NumSpiroAtoms+LabuteASA+PEOE_VSA9+SMR_VSA1+VSA_EState6+MQNs_topology_counts_rgIO+NN9+NN45+NN47+NN52+
+NN60+NN100+NN106+NN229+NN231+PEOE_VSA10+SMR_VSA2+SlogP_VSA6, data = treinoData, method = "svmLinear")
+```
+
+# Resultados
+```{r}
+teste2 = predict(modelo2, testeData)
+rmse2 = rmse(testeData$vina,teste2)
+rrse2 = rrse(testeData$vina,teste2)
+rmse2
+rrse2
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,teste2, col=ifelse(abs(testeData$vina-teste2) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+# Rodando com o método "enet"
+
+```{r}
+modelo3 = train(vina ~ F58+NN3+NN4+NN29+NN51+NN62+NN219+NN233+NN234+NN285+NN313+Chi4v+NumBridgeheadAtoms+PEOE_VSA6+SMR_VSA6+SlogP_VSA5+S1+S5+S10+F2+F3+F43+F44+F45+F46+F47+F49+F50+F51+
+F55+F56+NN28+NN50+NN61+NN161+NN232+NN284+nBondsM+n4Ring+nF8Ring+nT4Ring+nT8Ring+nTG12Ring+
+n4HeteroRing+nF8HeteroRing+nT4HeteroRing+nT8HeteroRing+nTG12HeteroRing+SlogP_VSA7+EState_VSA1+
+nG12Ring+nF10Ring+nF11Ring+nF12Ring+nFG12Ring+nT10Ring+nT11Ring+nT12Ring+nF10HeteroRing+nF11HeteroRing+nF12HeteroRing+nT10HeteroRing+nT11HeteroRing+nT12HeteroRing+NumSaturatedRings+NumSpiroAtoms+LabuteASA+PEOE_VSA9+SMR_VSA1+VSA_EState6+MQNs_topology_counts_rgIO+NN9+NN45+NN47+NN52+
+NN60+NN100+NN106+NN229+NN231+PEOE_VSA10+SMR_VSA2+SlogP_VSA6, data = treinoData, method = "enet")
+```
+
+# Resultados
+```{r}
+teste3 = predict(modelo3, testeData)
+rmse3 = rmse(testeData$vina,teste3)
+rrse3 = rrse(testeData$vina,teste3)
+rmse3
+rrse3
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,teste3, col=ifelse(abs(testeData$vina-teste3) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+# Treinei utilizando uma rede neural também
+
+```{r}
+f1<- as.formula("vina ~ F58+NN3+NN4+NN29+NN51+NN62+NN219+NN233+NN234+NN285+NN313+Chi4v+NumBridgeheadAtoms+PEOE_VSA6+SMR_VSA6+SlogP_VSA5+S1+S5+S10+F2+F3+F43+F44+F45+F46+F47+F49+F50+F51+
+F55+F56+NN28+NN50+NN61+NN161+NN232+NN284+nBondsM+n4Ring+nF8Ring+nT4Ring+nT8Ring+nTG12Ring+
+n4HeteroRing+nF8HeteroRing+nT4HeteroRing+nT8HeteroRing+nTG12HeteroRing+SlogP_VSA7+EState_VSA1+
+nG12Ring+nF10Ring+nF11Ring+nF12Ring+nFG12Ring+nT10Ring+nT11Ring+nT12Ring+nF10HeteroRing+nF11HeteroRing+nF12HeteroRing+nT10HeteroRing+nT11HeteroRing+nT12HeteroRing+NumSaturatedRings+NumSpiroAtoms+LabuteASA+PEOE_VSA9+SMR_VSA1+VSA_EState6+MQNs_topology_counts_rgIO+NN9+NN45+NN47+NN52+
+NN60+NN100+NN106+NN229+NN231+PEOE_VSA10+SMR_VSA2+SlogP_VSA6")
+
+rn1 <- neuralnet(f1,
+treinoData,
+threshold = 0.1,
+hidden = c(50,50))
+
+```
+
+#Resultados
+```{r}
+previsao1 = neuralnet::compute(rn1,testeData)
+```
+
+```{r}
+RNrmse1 = rmse(testeData$vina,previsao1$net.result)
+RNrrse1 = rrse(testeData$vina,previsao1$net.result)
+RNrmse1
+RNrrse1
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,previsao1$net.result, col=ifelse(abs(testeData$vina-previsao1$net.result) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+# Então eu resolvi fazer a seleção de atributos utilizando o métodos de ANOVA F-value.
+# Os modelos agora serão apenas com as variaveis do F-VALEU
+
+# Treinando utilizando svmLinear
+```{r}
+modelo4 = train(vina ~ NN231+NN243+NN248+NN254+NN255+NN262+NN265+NN277+NN278+NN279+NN284+NN285+NN287+NN288+NN292+NN293+NN295+NN296+NN297+NN300+nS+nCl+nBr+nI+n7Ring+n8Ring+n12Ring+nG12Ring+nF4Ring+nF5Ring+nF6Ring+nF7Ring+nF8Ring+nF11Ring+nF12Ring+nFG12Ring+nT7Ring+nT8Ring+nT11Ring+nT12Ring+nTG12Ring+n3HeteroRing+n7HeteroRing+n12HeteroRing+nG12HeteroRing+nF4HeteroRing+nF5HeteroRing+nF6HeteroRing+nF7HeteroRing+nF8HeteroRing+nF11HeteroRing+nF12HeteroRing+nFG12HeteroRing+nT7HeteroRing+nT8HeteroRing+nT11HeteroRing+nT12HeteroRing+nTG12HeteroRing+NumHAcceptors+NumSaturatedHeterocycles+NumAliphaticHeterocycles+NumSpiroAtoms+NumBridgeheadAtoms+EState_VSA4+EState_VSA5+MQNs_atom_counts_cl+MQNs_atom_counts_br+MQNs_atom_counts_i+MQNs_atom_counts_an+MQNs_atom_counts_co+MQNs_topology_counts_atv+MQNs_topology_counts_cdv+MQNs_topology_counts_cqv+MQNs_topology_counts_r7+MQNs_topology_counts_r8+MQNs_topology_counts_rgIO+MQNs_topology_counts_bfrc, data = treinoData, method = "svmLinear")
+```
+
+# Resultados
+```{r}
+teste4 = predict(modelo4, testeData)
+rmse4 = rmse(testeData$vina,teste4)
+rrse4 = rrse(testeData$vina,teste4)
+rmse4
+rrse4
+```
+
+#Plot 
+```{r}
+qplot(testeData$vina,teste4, col=ifelse(abs(testeData$vina-teste4) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+
+# Treinando usando enet
+```{r}
+modelo5 = train(vina ~ NN231+NN243+NN248+NN254+NN255+NN262+NN265+NN277+NN278+NN279+NN284+NN285+NN287+NN288+NN292+NN293+NN295+NN296+NN297+NN300+nS+nCl+nBr+nI+n7Ring+n8Ring+n12Ring+nG12Ring+nF4Ring+nF5Ring+nF6Ring+nF7Ring+nF8Ring+nF11Ring+nF12Ring+nFG12Ring+nT7Ring+nT8Ring+nT11Ring+nT12Ring+nTG12Ring+n3HeteroRing+n7HeteroRing+n12HeteroRing+nG12HeteroRing+nF4HeteroRing+nF5HeteroRing+nF6HeteroRing+nF7HeteroRing+nF8HeteroRing+nF11HeteroRing+nF12HeteroRing+nFG12HeteroRing+nT7HeteroRing+nT8HeteroRing+nT11HeteroRing+nT12HeteroRing+nTG12HeteroRing+NumHAcceptors+NumSaturatedHeterocycles+NumAliphaticHeterocycles+NumSpiroAtoms+NumBridgeheadAtoms+EState_VSA4+EState_VSA5+MQNs_atom_counts_cl+MQNs_atom_counts_br+MQNs_atom_counts_i+MQNs_atom_counts_an+MQNs_atom_counts_co+MQNs_topology_counts_atv+MQNs_topology_counts_cdv+MQNs_topology_counts_cqv+MQNs_topology_counts_r7+MQNs_topology_counts_r8+MQNs_topology_counts_rgIO+MQNs_topology_counts_bfrc, data = treinoData, method = "enet")
+```
+
+# Resultados
+```{r}
+teste5 = predict(modelo5, testeData)
+rmse5 = rmse(testeData$vina,teste5)
+rrse5 = rrse(testeData$vina,teste5)
+rmse5
+rrse5
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,teste5, col=ifelse(abs(testeData$vina-teste5) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+
+# Treinei utilizando uma rede neural também
+```{r}
+f2<- as.formula("vina ~ NN231+NN243+NN248+NN254+NN255+NN262+NN265+NN277+NN278+NN279+NN284+NN285+NN287+NN288+NN292+NN293+NN295+NN296+NN297+NN300+nS+nCl+nBr+nI+n7Ring+n8Ring+n12Ring+nG12Ring+nF4Ring+nF5Ring+nF6Ring+nF7Ring+nF8Ring+nF11Ring+nF12Ring+nFG12Ring+nT7Ring+nT8Ring+nT11Ring+nT12Ring+nTG12Ring+n3HeteroRing+n7HeteroRing+n12HeteroRing+nG12HeteroRing+nF4HeteroRing+nF5HeteroRing+nF6HeteroRing+nF7HeteroRing+nF8HeteroRing+nF11HeteroRing+nF12HeteroRing+nFG12HeteroRing+nT7HeteroRing+nT8HeteroRing+nT11HeteroRing+nT12HeteroRing+nTG12HeteroRing+NumHAcceptors+NumSaturatedHeterocycles+NumAliphaticHeterocycles+NumSpiroAtoms+NumBridgeheadAtoms+EState_VSA4+EState_VSA5+MQNs_atom_counts_cl+MQNs_atom_counts_br+MQNs_atom_counts_i+MQNs_atom_counts_an+MQNs_atom_counts_co+MQNs_topology_counts_atv+MQNs_topology_counts_cdv+MQNs_topology_counts_cqv+MQNs_topology_counts_r7+MQNs_topology_counts_r8+MQNs_topology_counts_rgIO+MQNs_topology_counts_bfrc")
+
+rn2 <- neuralnet(f2,
+treinoData,
+threshold = 0.1,
+hidden = c(50,50))
+
+```
+
+```{r}
+previsao2 = neuralnet::compute(rn2,testeData)
+```
+
+```{r}
+RNrmse2 = rmse(testeData$vina,previsao2$net.result)
+RNrrse2 = rrse(testeData$vina,previsao2$net.result)
+RNrmse2
+RNrrse2
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,previsao2$net.result, col=ifelse(abs(testeData$vina-previsao2$net.result) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+
+# E por fim
+# Fiz a seleção de atributos utilizando o RandomForestRegression
+
+# Treinando com "svmLinear"
+```{r}
+modelo6 = train(vina ~ F49+NN3+F40+F41+F42+nRing+F39+F53+F54+Kappa3+F20+F44+NN350+nTRing+F5+F58+F47+F50+MQNs_bond_counts_csb+S5+NN4+F30+F25+F46+HallKierAlpha+F38+Asphericity+NN2+F24+F10+BalabanJ+F6+F51+EState_VSA2+MQNs_atom_counts_s+F21+F11+NN5+NN1+F31+F8+F13+F2+MQNs_topology_counts_aqv+S6+F15+F9+F52+EState_VSA10+F45+NN344+SlogP_VSA3+F22+PEOE_VSA1+MQNs_topology_counts_asv+F28+pKd+F26+M+S2+F19+I+F37+D6+F17+NN22+F36+F7+F16+Kappa1+H+S8+SMR_VSA10+S3+F32+EState_VSA9+PMI2, data = treinoData, method = "svmLinear")
+```
+
+# Resultados
+```{r}
+teste6 = predict(modelo6, testeData)
+rmse6 = rmse(testeData$vina,teste6)
+rrse6 = rrse(testeData$vina,teste6)
+rmse6
+rrse6
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,teste6, col=ifelse(abs(testeData$vina-teste6) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+# Treinando com "enet"
+```{r}
+modelo7 = train(vina ~ F49+NN3+F40+F41+F42+nRing+F39+F53+F54+Kappa3+F20+F44+NN350+nTRing+F5+F58+F47+F50+MQNs_bond_counts_csb+S5+NN4+F30+F25+F46+HallKierAlpha+F38+Asphericity+NN2+F24+F10+BalabanJ+F6+F51+EState_VSA2+MQNs_atom_counts_s+F21+F11+NN5+NN1+F31+F8+F13+F2+MQNs_topology_counts_aqv+S6+F15+F9+F52+EState_VSA10+F45+NN344+SlogP_VSA3+F22+PEOE_VSA1+MQNs_topology_counts_asv+F28+pKd+F26+M+S2+F19+I+F37+D6+F17+NN22+F36+F7+F16+Kappa1+H+S8+SMR_VSA10+S3+F32+EState_VSA9+PMI2, data = treinoData, method = "enet")
+```
+
+# Resultados
+```{r}
+teste7 = predict(modelo7, testeData)
+rmse7 = rmse(testeData$vina,teste7)
+rrse7 = rrse(testeData$vina,teste7)
+rmse7
+rrse7
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,teste7, col=ifelse(abs(testeData$vina-teste7) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+# Treinei utilizando uma rede neural também
+```{r}
+f3<- as.formula("vina ~ F49+NN3+F40+F41+F42+nRing+F39+F53+F54+Kappa3+F20+F44+NN350+nTRing+F5+F58+F47+F50+MQNs_bond_counts_csb+S5+NN4+F30+F25+F46+HallKierAlpha+F38+Asphericity+NN2+F24+F10+BalabanJ+F6+F51+EState_VSA2+MQNs_atom_counts_s+F21+F11+NN5+NN1+F31+F8+F13+F2+MQNs_topology_counts_aqv+S6+F15+F9+F52+EState_VSA10+F45+NN344+SlogP_VSA3+F22+PEOE_VSA1+MQNs_topology_counts_asv+F28+pKd+F26+M+S2+F19+I+F37+D6+F17+NN22+F36+F7+F16+Kappa1+H+S8+SMR_VSA10+S3+F32+EState_VSA9+PMI2")
+
+rn3 <- neuralnet(f3,
+treinoData,
+threshold = 0.1,
+hidden = c(50,50))
+```
+
+```{r}
+previsao3 = neuralnet::compute(rn3,testeData)
+```
+
+```{r}
+RNrmse3 = rmse(testeData$vina,previsao3$net.result)
+RNrrse3 = rrse(testeData$vina,previsao3$net.result)
+RNrmse3
+RNrrse3
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,previsao3$net.result, col=ifelse(abs(testeData$vina-previsao3$net.result) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+# MOVENDO OUTLIERS
+
+# Entrada com os dados normalizados
+```{r}
+entrada = read.csv('C://Users//Balboni//Desktop//Mestrado//Aulas//Mineração de dados//R//TarefaFinal//RPDB_pos_python.csv', sep=",")
+```
+
+```{r}
+remove_outliers <- function(x, na.rm = TRUE, ...) {
+  qnt <- quantile(x, probs=c(.25, .75), na.rm = na.rm, ...)
+  H <- 1.5 * IQR(x, na.rm = na.rm)
+  y <- x
+  y[x < (qnt[1] - H)] <- NA
+  y[x > (qnt[2] + H)] <- NA
+  y
+}
+
+entrada$vina = remove_outliers(entrada$vina)
+entrada = entrada[!is.na(entrada$vina),]
+```
+
+# Separação dos dados
+```{r}
+set.seed(1000)
+proporcao=0.8
+random = createDataPartition(entrada$vina,p=proporcao,list=FALSE) 
+treinoData =  entrada[random,] 
+testeData =  entrada[-random,]
+```
+
+
+```{r}
+modelo8 = train(vina ~ F49+NN3+F40+F41+F42+nRing+F39+F53+F54+Kappa3+F20+F44+NN350+nTRing+F5+F58+F47+F50+MQNs_bond_counts_csb+S5+NN4+F30+F25+F46+HallKierAlpha+F38+Asphericity+NN2+F24+F10+BalabanJ+F6+F51+EState_VSA2+MQNs_atom_counts_s+F21+F11+NN5+NN1+F31+F8+F13+F2+MQNs_topology_counts_aqv+S6+F15+F9+F52+EState_VSA10+F45+NN344+SlogP_VSA3+F22+PEOE_VSA1+MQNs_topology_counts_asv+F28+pKd+F26+M+S2+F19+I+F37+D6+F17+NN22+F36+F7+F16+Kappa1+H+S8+SMR_VSA10+S3+F32+EState_VSA9+PMI2, data = treinoData, method = "svmLinear")
+```
+
+# Resultados
+```{r}
+teste8 = predict(modelo8, testeData)
+rmse8 = rmse(testeData$vina,teste8)
+rrse8 = rrse(testeData$vina,teste8)
+rmse8
+rrse8
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,teste8, col=ifelse(abs(testeData$vina-teste8) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+# Rodando com enet
+```{r}
+modelo9 = train(vina ~ F49+NN3+F40+F41+F42+nRing+F39+F53+F54+Kappa3+F20+F44+NN350+nTRing+F5+F58+F47+F50+MQNs_bond_counts_csb+S5+NN4+F30+F25+F46+HallKierAlpha+F38+Asphericity+NN2+F24+F10+BalabanJ+F6+F51+EState_VSA2+MQNs_atom_counts_s+F21+F11+NN5+NN1+F31+F8+F13+F2+MQNs_topology_counts_aqv+S6+F15+F9+F52+EState_VSA10+F45+NN344+SlogP_VSA3+F22+PEOE_VSA1+MQNs_topology_counts_asv+F28+pKd+F26+M+S2+F19+I+F37+D6+F17+NN22+F36+F7+F16+Kappa1+H+S8+SMR_VSA10+S3+F32+EState_VSA9+PMI2, data = treinoData, method = "enet")
+```
+
+# Resultados
+```{r}
+teste9 = predict(modelo9, testeData)
+rmse9 = rmse(testeData$vina,teste9)
+rrse9 = rrse(testeData$vina,teste9)
+rmse9
+rrse9
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,teste9, col=ifelse(abs(testeData$vina-teste9) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+# Treinei utilizando uma rede neural também
+```{r}
+f4<- as.formula("vina ~ F49+NN3+F40+F41+F42+nRing+F39+F53+F54+Kappa3+F20+F44+NN350+nTRing+F5+F58+F47+F50+MQNs_bond_counts_csb+S5+NN4+F30+F25+F46+HallKierAlpha+F38+Asphericity+NN2+F24+F10+BalabanJ+F6+F51+EState_VSA2+MQNs_atom_counts_s+F21+F11+NN5+NN1+F31+F8+F13+F2+MQNs_topology_counts_aqv+S6+F15+F9+F52+EState_VSA10+F45+NN344+SlogP_VSA3+F22+PEOE_VSA1+MQNs_topology_counts_asv+F28+pKd+F26+M+S2+F19+I+F37+D6+F17+NN22+F36+F7+F16+Kappa1+H+S8+SMR_VSA10+S3+F32+EState_VSA9+PMI2")
+
+rn4 <- neuralnet(f4,
+entrada,
+threshold = 0.1,
+hidden = c(77,77))
+```
+
+```{r}
+previsao4 = neuralnet::compute(rn4,testeData)
+```
+
+```{r}
+RNrmse4 = rmse(testeData$vina,previsao4$net.result)
+RNrrse4 = rrse(testeData$vina,previsao4$net.result)
+RNrmse4
+RNrrse4
+```
+
+# Plotando se o erro de cada instancia de teste é menor que 0.01, caso seja menor que 0.01 então ele plota em azul, senão ele plota em vermelho.
+```{r}
+qplot(testeData$vina,previsao4$net.result, col=ifelse(abs(testeData$vina-previsao4$net.result) < 0.01,"red","blue"),  ylab = "Valores preditos pelo modelo",
+              xlab = "Valores do testeData",show.legend=FALSE) + geom_abline(intercept = 0, slope = 1)
+```
+
+
+

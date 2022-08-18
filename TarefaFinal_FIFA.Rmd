@@ -1,0 +1,85 @@
+---
+title: "TarefaFinal_Fifa"
+author: "Balboni"
+date: "22/06/2021"
+output: pdf_document
+---
+
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(parallel)
+library(iterators)
+library(foreach)
+library(lattice)
+library(ggplot2)
+```
+
+# Carregando dataset
+```{r}
+entrada = read.csv('C://Users//Balboni//Desktop//Mestrado//Aulas//Mineração de dados//R//TarefaFinal//Envio//Datasets//Fifa_Final.csv', sep=",")
+```
+
+# Paralelismo
+```{r}
+library(doParallel)
+
+cl <- makePSOCKcluster(4)
+registerDoParallel(cl)
+```
+
+# Excluindo variavel que n quero
+```{r}
+entrada$X <- NULL
+```
+
+```{r}
+entrada$Value[entrada$Value == "Menor que 4700"] = "Entre 4700 e 5700"
+entrada$Value[entrada$Value == "Entre 4700 e 5700"] = "Menor que 5700"
+```
+
+# Separação dos dados
+```{r}
+p <- 0.75
+set.seed(1)
+inTraining <- sample.int(n = nrow(entrada),
+                         size = floor(p * nrow(entrada)), 
+                         replace = FALSE)
+treinoData <- entrada[inTraining, ]
+testeData <- entrada[-inTraining, ]
+```
+
+# prob de cada classe
+```{r}
+prop.table(table(entrada$Value))
+```
+
+
+# Treinando
+```{r}
+modelo1 = rpart(
+  formula = treinoData$Value ~ .,
+  data=treinoData,
+  parms = list(split = "information"),
+  cp = 0.002,
+  control = rpart.control(
+    sampling = "up",
+    minsplit = 1,
+    minbucket = 1,
+    maxdepth = 30)
+  )
+```
+
+```{r}
+rpart.plot(modelo1)
+barplot(modelo1$variable.importance)
+```
+
+```{r}
+resultado1 = predict(modelo1,testeData,type = "class")
+confusao1 = confusionMatrix(resultado1,as.factor(testeData$Value),mode="prec_recall")
+confusao1
+```
+
+
