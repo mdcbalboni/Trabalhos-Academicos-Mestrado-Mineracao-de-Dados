@@ -1,7 +1,7 @@
-# No zip contém um relatorio completo, com todos os passos que eu segui pra obter o resultado e todos os resultados
+No zip contém um relatorio completo, com todos os passos que eu segui pra obter o resultado e todos os resultados
 ele se chama "Relatorio.pdf".
 
-# Não gerei os pdf dos arquivos "TarefaFinal_pKd.rmd" "TarefaFinalVina.rmd", porque meu pc não aguenta, mas ta tudo
+Não gerei os pdf dos arquivos "TarefaFinal_pKd.rmd" "TarefaFinalVina.rmd", porque meu pc não aguenta, mas ta tudo
 no arquivo "Relatorio.pdf".
 
 # No zip contem 3 arquivos do R:
@@ -17,7 +17,7 @@ no arquivo "Relatorio.pdf".
 
 https://colab.research.google.com/drive/1v8csTdspsn03R3dSlLzRXGNNw6izYZ0V?usp=sharing
 
-Link para os datasets:
+# Link para os datasets:
 Nesse link tem um zip com 5 arquivos dentro, são 
 "Fifa_Inicial" 				- onde tem o dataset original
 "Fifa_Final" 				- onde tem o o dataset com minhas modificações
